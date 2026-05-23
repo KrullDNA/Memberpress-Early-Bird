@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class KDNA_Early_Bird_Engine {
 
 	const OPTION_INDEX     = 'kdna_early_bird_membership_index';
+	const OPTION_OVERRIDES = 'kdna_early_bird_test_overrides';
 	const TRANSIENT_PREFIX = 'kdna_eb_count_';
 	const MEPR_PRICE_META  = '_mepr_product_price';
 	const MEPR_PRODUCT_CPT = 'memberpressproduct';
@@ -346,17 +347,52 @@ class KDNA_Early_Bird_Engine {
 			'no_found_rows'    => true,
 		) );
 
-		$index = array();
+		$index     = array();
+		$overrides = array();
 
 		if ( is_array( $rule_ids ) ) {
 			foreach ( $rule_ids as $rule_id ) {
-				$active = (int) get_post_meta( $rule_id, KDNA_Early_Bird_Rules::META_ACTIVE, true );
-				if ( 1 !== $active ) {
+				$rows = get_post_meta( $rule_id, KDNA_Early_Bird_Rules::META_ROWS, true );
+				if ( ! is_array( $rows ) || empty( $rows ) ) {
 					continue;
 				}
 
-				$rows = get_post_meta( $rule_id, KDNA_Early_Bird_Rules::META_ROWS, true );
-				if ( ! is_array( $rows ) || empty( $rows ) ) {
+				$active     = (int) get_post_meta( $rule_id, KDNA_Early_Bird_Rules::META_ACTIVE, true );
+				$rule_title = get_the_title( $rule_id );
+
+				// Pass one. Scan rows for filled in test overrides. Done
+				// regardless of active state so a stale override on an
+				// inactive rule still triggers the warning banner.
+				foreach ( $rows as $row ) {
+					if ( ! is_array( $row ) ) {
+						continue;
+					}
+					$mid = isset( $row['membership_id'] ) ? (int) $row['membership_id'] : 0;
+					if ( $mid <= 0 ) {
+						continue;
+					}
+					$override_raw = isset( $row['test_override_count'] ) ? $row['test_override_count'] : '';
+					if ( '' === $override_raw || null === $override_raw ) {
+						continue;
+					}
+					$membership_title = get_the_title( $mid );
+					if ( '' === $membership_title ) {
+						/* translators: %d is the membership post id. */
+						$membership_title = sprintf( __( 'Membership #%d', 'kdna-early-bird' ), $mid );
+					}
+					$overrides[] = array(
+						'rule_id'          => (int) $rule_id,
+						'rule_title'       => '' !== $rule_title ? $rule_title : __( '(untitled rule)', 'kdna-early-bird' ),
+						'rule_active'      => 1 === $active,
+						'membership_id'    => $mid,
+						'membership_title' => $membership_title,
+						'override_count'   => max( 0, (int) $override_raw ),
+					);
+				}
+
+				// Pass two. Only active rules contribute to the live
+				// membership index used by the price filter.
+				if ( 1 !== $active ) {
 					continue;
 				}
 
@@ -382,8 +418,6 @@ class KDNA_Early_Bird_Engine {
 						$end_date = gmdate( 'Y-m-d', $timestamp );
 					}
 				}
-
-				$rule_title = get_the_title( $rule_id );
 
 				foreach ( $rows as $row ) {
 					if ( ! is_array( $row ) ) {
@@ -422,7 +456,54 @@ class KDNA_Early_Bird_Engine {
 		}
 
 		update_option( self::OPTION_INDEX, $index, true );
+		// Overrides list is admin only, no need to autoload it.
+		update_option( self::OPTION_OVERRIDES, $overrides, false );
 		self::$request_cache = array();
 		return $index;
+	}
+
+	/**
+	 * Return the cached list of filled in test overrides, building it
+	 * lazily if it has not been computed yet.
+	 */
+	public function get_test_overrides() {
+		$list = get_option( self::OPTION_OVERRIDES, null );
+		if ( ! is_array( $list ) ) {
+			$this->rebuild_index();
+			$list = get_option( self::OPTION_OVERRIDES, array() );
+			if ( ! is_array( $list ) ) {
+				$list = array();
+			}
+		}
+		return $list;
+	}
+
+	/**
+	 * Read the stored full price for a membership, bypassing this plugin's
+	 * own price filter. Used by the status panel to show what MemberPress
+	 * would charge without the override.
+	 */
+	public function get_stored_full_price( $membership_id ) {
+		$membership_id = (int) $membership_id;
+		if ( $membership_id <= 0 ) {
+			return '';
+		}
+		remove_filter( 'get_post_metadata', array( $this, 'filter_price_meta' ), 10 );
+		$price = get_post_meta( $membership_id, self::MEPR_PRICE_META, true );
+		add_filter( 'get_post_metadata', array( $this, 'filter_price_meta' ), 10, 4 );
+		return is_scalar( $price ) ? (string) $price : '';
+	}
+
+	/**
+	 * Read the price that is currently being served to buyers, which is
+	 * exactly what MemberPress sees, since our filter is registered.
+	 */
+	public function get_served_price( $membership_id ) {
+		$membership_id = (int) $membership_id;
+		if ( $membership_id <= 0 ) {
+			return '';
+		}
+		$price = get_post_meta( $membership_id, self::MEPR_PRICE_META, true );
+		return is_scalar( $price ) ? (string) $price : '';
 	}
 }

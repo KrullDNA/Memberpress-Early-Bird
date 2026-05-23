@@ -92,3 +92,78 @@
 		justify-self: start;
 	}
 }
+
+/* Live status meta box. */
+
+.kdna-eb-status-inactive {
+	background: #fff8e5;
+	border-left: 4px solid #dba617;
+	padding: 8px 12px;
+	margin: 0 0 12px;
+}
+
+.kdna-eb-status-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+	gap: 16px;
+	margin-bottom: 8px;
+}
+
+.kdna-eb-status-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+}
+
+.kdna-eb-status-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 6px;
+}
+
+.kdna-eb-status-card-title {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.kdna-eb-status-pill {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 3px 10px;
+	border-radius: 12px;
+	white-space: nowrap;
+}
+
+.kdna-eb-status-live {
+	background: #d7f5dd;
+	color: #00450c;
+}
+
+.kdna-eb-status-not-live {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.kdna-eb-status-reason {
+	margin: 4px 0 10px;
+	color: #50575e;
+	font-style: italic;
+}
+
+.kdna-eb-status-table th {
+	width: 55%;
+	font-weight: 500;
+	color: #50575e;
+}
+
+.kdna-eb-status-table td {
+	text-align: right;
+}
+
+.kdna-eb-status-note {
+	margin-top: 10px;
+}

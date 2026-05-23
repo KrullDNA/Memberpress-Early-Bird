@@ -72,6 +72,7 @@ register_activation_hook( __FILE__, 'kdna_early_bird_activate' );
  */
 function kdna_early_bird_deactivate() {
 	delete_option( KDNA_Early_Bird_Engine::OPTION_INDEX );
+	delete_option( KDNA_Early_Bird_Engine::OPTION_OVERRIDES );
 }
 register_deactivation_hook( __FILE__, 'kdna_early_bird_deactivate' );
 
