@@ -22,6 +22,7 @@ define( 'KDNA_EARLY_BIRD_BASENAME', plugin_basename( __FILE__ ) );
 define( 'KDNA_EARLY_BIRD_CPT', 'kdna_eb_rule' );
 
 require_once KDNA_EARLY_BIRD_PATH . 'includes/class-kdna-eb-rules.php';
+require_once KDNA_EARLY_BIRD_PATH . 'includes/class-kdna-eb-engine.php';
 require_once KDNA_EARLY_BIRD_PATH . 'includes/class-kdna-eb-admin.php';
 
 /**
@@ -48,9 +49,31 @@ function kdna_early_bird_bootstrap() {
 	}
 
 	KDNA_Early_Bird_Rules::instance();
+	KDNA_Early_Bird_Engine::instance();
 	KDNA_Early_Bird_Admin::instance();
 }
 add_action( 'plugins_loaded', 'kdna_early_bird_bootstrap' );
+
+/**
+ * Rebuild the membership index on activation so the price engine has a
+ * usable map even before the first rule save.
+ */
+function kdna_early_bird_activate() {
+	if ( class_exists( 'KDNA_Early_Bird_Engine' ) ) {
+		KDNA_Early_Bird_Engine::instance()->rebuild_index();
+	}
+}
+register_activation_hook( __FILE__, 'kdna_early_bird_activate' );
+
+/**
+ * Tidy up the autoloaded option on deactivation. Transients expire on
+ * their own. We do not delete rule posts, those remain in the database
+ * in case the plugin is reactivated later.
+ */
+function kdna_early_bird_deactivate() {
+	delete_option( KDNA_Early_Bird_Engine::OPTION_INDEX );
+}
+register_deactivation_hook( __FILE__, 'kdna_early_bird_deactivate' );
 
 /**
  * Admin notice shown when MemberPress is not active.
