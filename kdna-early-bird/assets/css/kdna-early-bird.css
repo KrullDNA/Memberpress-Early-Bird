@@ -1,0 +1,125 @@
+/* KDNA Early Bird Pricing, front end widget styles.
+   Atomic Elementor: single .kdna-early-bird-widget wrapper, no
+   .elementor-widget-container references. */
+
+.kdna-early-bird-widget {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: flex-start;
+}
+
+.kdna-early-bird-active-label {
+	display: block;
+	line-height: 1.2;
+}
+
+.kdna-early-bird-prices {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 8px;
+	line-height: 1;
+}
+
+.kdna-early-bird-current-price {
+	font-weight: 700;
+}
+
+.kdna-early-bird-full-price {
+	text-decoration: line-through;
+	opacity: 0.65;
+}
+
+.kdna-early-bird-spots {
+	display: flex;
+	line-height: 1;
+}
+
+.kdna-early-bird-spots-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 999px;
+	background: #fff2c5;
+	color: #1d2327;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.kdna-early-bird-countdown {
+	display: flex;
+	align-items: center;
+	line-height: 1;
+}
+
+.kdna-early-bird-countdown--days {
+	font-variant-numeric: tabular-nums;
+}
+
+.kdna-early-bird-countdown-units {
+	display: inline-flex;
+	gap: 8px;
+}
+
+.kdna-early-bird-countdown-unit {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 2.5em;
+}
+
+.kdna-early-bird-countdown-value {
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.kdna-early-bird-countdown-label {
+	font-size: 0.75em;
+	opacity: 0.8;
+	margin-top: 2px;
+}
+
+.kdna-early-bird-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 18px;
+	border: 1px solid #135e96;
+	border-radius: 4px;
+	background: #135e96;
+	color: #ffffff;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+	line-height: 1.2;
+}
+
+.kdna-early-bird-button:hover,
+.kdna-early-bird-button:focus {
+	background: #0a4b78;
+	color: #ffffff;
+	border-color: #0a4b78;
+}
+
+.kdna-early-bird-button-icon {
+	display: inline-flex;
+	align-items: center;
+	line-height: 1;
+}
+
+.kdna-early-bird-button-icon svg {
+	display: block;
+	fill: currentColor;
+}
+
+.kdna-early-bird-editor-notice {
+	display: inline-block;
+	padding: 12px 16px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 4px;
+	color: #50575e;
+	background: #f6f7f7;
+	font-size: 13px;
+	line-height: 1.4;
+}
