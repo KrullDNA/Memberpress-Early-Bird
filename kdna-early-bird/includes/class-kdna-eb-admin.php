@@ -310,17 +310,14 @@ class KDNA_Early_Bird_Admin {
 	}
 
 	/**
-	 * Format a price string using MemberPress's own formatter when
-	 * available, otherwise a plain two decimal fallback.
+	 * Format a price string using the shared engine helper so the
+	 * status panel matches the widget's output exactly.
 	 */
 	private function format_price( $value ) {
 		if ( '' === $value || null === $value ) {
 			return __( 'not set', 'kdna-early-bird' );
 		}
-		if ( class_exists( 'MeprUtils' ) && method_exists( 'MeprUtils', 'format_currency' ) ) {
-			return MeprUtils::format_currency( (float) $value );
-		}
-		return number_format( (float) $value, 2, '.', '' );
+		return KDNA_Early_Bird_Engine::format_price( $value );
 	}
 
 	/**
