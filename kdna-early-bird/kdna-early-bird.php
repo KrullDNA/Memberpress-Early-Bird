@@ -77,6 +77,47 @@ function kdna_early_bird_deactivate() {
 register_deactivation_hook( __FILE__, 'kdna_early_bird_deactivate' );
 
 /**
+ * Register front end widget assets without enqueueing them. Elementor
+ * enqueues them on demand via get_style_depends / get_script_depends on
+ * the widget class, so the CSS and JS only load on pages where the
+ * widget is actually present.
+ */
+function kdna_early_bird_register_widget_assets() {
+	wp_register_style(
+		'kdna-early-bird-widget',
+		KDNA_EARLY_BIRD_URL . 'assets/css/kdna-early-bird.css',
+		array(),
+		KDNA_EARLY_BIRD_VERSION
+	);
+	wp_register_script(
+		'kdna-early-bird-widget',
+		KDNA_EARLY_BIRD_URL . 'assets/js/kdna-early-bird.js',
+		array(),
+		KDNA_EARLY_BIRD_VERSION,
+		true
+	);
+}
+add_action( 'wp_enqueue_scripts', 'kdna_early_bird_register_widget_assets', 5 );
+add_action( 'elementor/editor/before_enqueue_scripts', 'kdna_early_bird_register_widget_assets' );
+add_action( 'elementor/preview/enqueue_styles', 'kdna_early_bird_register_widget_assets' );
+
+/**
+ * Register the Elementor widget. Per the brief and the Atomic Elementor
+ * requirements this hook is wired at file load time, not inside an
+ * elementor/loaded callback.
+ */
+function kdna_early_bird_register_widget( $widgets_manager ) {
+	if ( ! kdna_early_bird_is_memberpress_active() ) {
+		return;
+	}
+	require_once KDNA_EARLY_BIRD_PATH . 'includes/class-kdna-eb-widget.php';
+	if ( class_exists( 'KDNA_Early_Bird_Widget' ) && is_object( $widgets_manager ) && method_exists( $widgets_manager, 'register' ) ) {
+		$widgets_manager->register( new KDNA_Early_Bird_Widget() );
+	}
+}
+add_action( 'elementor/widgets/register', 'kdna_early_bird_register_widget' );
+
+/**
  * Admin notice shown when MemberPress is not active.
  */
 function kdna_early_bird_memberpress_missing_notice() {
