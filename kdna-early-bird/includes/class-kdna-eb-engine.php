@@ -558,4 +558,84 @@ class KDNA_Early_Bird_Engine {
 		$price = get_post_meta( $membership_id, self::MEPR_PRICE_META, true );
 		return is_scalar( $price ) ? (string) $price : '';
 	}
+
+	/**
+	 * Format a price using MemberPress's own currency settings. Reads
+	 * the symbol from MeprOptions, falls back to deriving it from the
+	 * currency code, then to MeprUtils::format_currency, then to a plain
+	 * two decimal number. An explicit override always wins.
+	 */
+	public static function format_price( $value, $symbol_override = '' ) {
+		if ( '' === $value || null === $value ) {
+			return '';
+		}
+
+		$amount    = (float) $value;
+		$formatted = number_format( $amount, 2, '.', ',' );
+
+		if ( '' !== (string) $symbol_override ) {
+			return (string) $symbol_override . $formatted;
+		}
+
+		$currency = self::get_currency_settings();
+		if ( '' !== $currency['symbol'] ) {
+			return $currency['after']
+				? $formatted . $currency['symbol']
+				: $currency['symbol'] . $formatted;
+		}
+
+		if ( class_exists( 'MeprUtils' ) && method_exists( 'MeprUtils', 'format_currency' ) ) {
+			$out = MeprUtils::format_currency( $amount );
+			if ( is_string( $out ) && '' !== $out ) {
+				return $out;
+			}
+		}
+
+		return $formatted;
+	}
+
+	/**
+	 * Read MemberPress's configured currency symbol and position. If the
+	 * symbol field is empty we derive a sensible one from the ISO code.
+	 */
+	private static function get_currency_settings() {
+		$result = array( 'symbol' => '', 'after' => false );
+
+		if ( ! class_exists( 'MeprOptions' ) || ! method_exists( 'MeprOptions', 'fetch' ) ) {
+			return $result;
+		}
+
+		$opts = MeprOptions::fetch();
+		if ( ! is_object( $opts ) ) {
+			return $result;
+		}
+
+		if ( isset( $opts->currency_symbol ) && '' !== (string) $opts->currency_symbol ) {
+			$result['symbol'] = (string) $opts->currency_symbol;
+		} elseif ( isset( $opts->currency_code ) && '' !== (string) $opts->currency_code ) {
+			$result['symbol'] = self::symbol_from_code( (string) $opts->currency_code );
+		}
+
+		if ( isset( $opts->currency_symbol_after ) ) {
+			$result['after'] = (bool) $opts->currency_symbol_after;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Fallback symbol map for common ISO currency codes. Used only when
+	 * MemberPress's symbol field is blank but the code is set.
+	 */
+	private static function symbol_from_code( $code ) {
+		$map = array(
+			'USD' => '$',  'GBP' => '£',  'EUR' => '€',  'JPY' => '¥',  'INR' => '₹',
+			'CAD' => 'CA$','AUD' => 'A$', 'NZD' => 'NZ$','CHF' => 'CHF ',
+			'SEK' => 'kr ','NOK' => 'kr ','DKK' => 'kr ','ZAR' => 'R',
+			'BRL' => 'R$', 'MXN' => 'MX$','KRW' => '₩',  'CNY' => '¥',  'HKD' => 'HK$',
+			'SGD' => 'S$', 'TWD' => 'NT$','ILS' => '₪',  'PLN' => 'zł ','TRY' => '₺',
+		);
+		$up = strtoupper( (string) $code );
+		return isset( $map[ $up ] ) ? $map[ $up ] : $code . ' ';
+	}
 }

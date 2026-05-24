@@ -234,6 +234,17 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 		);
 
 		$this->add_control(
+			'currency_symbol',
+			array(
+				'label'       => __( 'Currency symbol', 'kdna-early-bird' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'default'     => '',
+				'placeholder' => __( 'Auto detect', 'kdna-early-bird' ),
+				'description' => __( 'Override the currency symbol. Leave empty to use the symbol from MemberPress, Settings, Payments.', 'kdna-early-bird' ),
+			)
+		);
+
+		$this->add_control(
 			'active_label_text',
 			array(
 				'label'   => __( 'Active label', 'kdna-early-bird' ),
@@ -245,20 +256,44 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 		$this->add_control(
 			'spots_template',
 			array(
-				'label'       => __( 'Spots remaining text', 'kdna-early-bird' ),
+				'label'       => __( 'Spots remaining text (multiple)', 'kdna-early-bird' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
 				'default'     => __( '%d spots left', 'kdna-early-bird' ),
-				'description' => __( 'Use %d as a placeholder for the number of spots remaining.', 'kdna-early-bird' ),
+				'description' => __( 'Use %d as a placeholder for the number of spots remaining. Used when 0, 2 or more spots remain.', 'kdna-early-bird' ),
+			)
+		);
+
+		$this->add_control(
+			'spots_template_singular',
+			array(
+				'label'       => __( 'Spots remaining text (one)', 'kdna-early-bird' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'default'     => __( '%d spot left', 'kdna-early-bird' ),
+				'description' => __( 'Used when exactly one spot remains. Use %d for the number.', 'kdna-early-bird' ),
 			)
 		);
 
 		$this->add_control(
 			'days_template',
 			array(
-				'label'       => __( 'Days remaining text', 'kdna-early-bird' ),
+				'label'       => __( 'Days remaining text (multiple)', 'kdna-early-bird' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
 				'default'     => __( '%d days left', 'kdna-early-bird' ),
-				'description' => __( 'Used when the time remaining format is set to plain days. Use %d for the number.', 'kdna-early-bird' ),
+				'description' => __( 'Used when the time remaining format is set to plain days and 0, 2 or more days remain. Use %d for the number.', 'kdna-early-bird' ),
+				'condition'   => array(
+					'show_countdown' => 'yes',
+					'countdown_mode' => 'days',
+				),
+			)
+		);
+
+		$this->add_control(
+			'days_template_singular',
+			array(
+				'label'       => __( 'Days remaining text (one)', 'kdna-early-bird' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'default'     => __( '%d day left', 'kdna-early-bird' ),
+				'description' => __( 'Used when exactly one day remains. Use %d for the number.', 'kdna-early-bird' ),
 				'condition'   => array(
 					'show_countdown' => 'yes',
 					'countdown_mode' => 'days',
@@ -1034,12 +1069,12 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 				<div class="kdna-early-bird-prices">
 					<?php if ( $show_current_price ) : ?>
 						<span class="kdna-early-bird-current-price">
-							<?php echo esc_html( $this->format_price( $current_price ) ); ?>
+							<?php echo esc_html( $this->format_price( $current_price, $settings ) ); ?>
 						</span>
 					<?php endif; ?>
 					<?php if ( $show_full_price && '' !== $full_price && (string) $full_price !== (string) $current_price ) : ?>
 						<span class="kdna-early-bird-full-price">
-							<?php echo esc_html( $this->format_price( $full_price ) ); ?>
+							<?php echo esc_html( $this->format_price( $full_price, $settings ) ); ?>
 						</span>
 					<?php endif; ?>
 				</div>
@@ -1049,8 +1084,13 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 				<div class="kdna-early-bird-spots">
 					<span class="kdna-early-bird-spots-badge">
 						<?php
-						$template = isset( $settings['spots_template'] ) ? (string) $settings['spots_template'] : '%d spots left';
-						echo esc_html( $this->safe_sprintf_int( $template, (int) $spots ) );
+						echo esc_html(
+							$this->pluralised(
+								isset( $settings['spots_template_singular'] ) ? (string) $settings['spots_template_singular'] : '%d spot left',
+								isset( $settings['spots_template'] ) ? (string) $settings['spots_template'] : '%d spots left',
+								(int) $spots
+							)
+						);
 						?>
 					</span>
 				</div>
@@ -1084,7 +1124,7 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 		<div class="kdna-early-bird-widget kdna-early-bird-widget--full-only">
 			<div class="kdna-early-bird-prices">
 				<span class="kdna-early-bird-current-price">
-					<?php echo esc_html( $this->format_price( $full_price ) ); ?>
+					<?php echo esc_html( $this->format_price( $full_price, $settings ) ); ?>
 				</span>
 			</div>
 			<?php if ( $show_button ) : ?>
@@ -1113,10 +1153,17 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 
 		if ( 'days' === $mode ) {
 			$days_remaining = $this->days_until( $end_date );
-			$template       = isset( $settings['days_template'] ) ? (string) $settings['days_template'] : '%d days left';
 			?>
 			<div class="kdna-early-bird-countdown kdna-early-bird-countdown--days">
-				<?php echo esc_html( $this->safe_sprintf_int( $template, $days_remaining ) ); ?>
+				<?php
+				echo esc_html(
+					$this->pluralised(
+						isset( $settings['days_template_singular'] ) ? (string) $settings['days_template_singular'] : '%d day left',
+						isset( $settings['days_template'] ) ? (string) $settings['days_template'] : '%d days left',
+						$days_remaining
+					)
+				);
+				?>
 			</div>
 			<?php
 			return;
@@ -1224,25 +1271,32 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 	}
 
 	/**
-	 * Format a price using MemberPress's currency formatter when
-	 * available, otherwise a plain two decimal fallback.
+	 * Format a price for display in the widget. Delegates to the engine
+	 * so widget output and admin status panel formatting stay aligned,
+	 * but lets the widget's currency_symbol control override the auto
+	 * detected symbol.
 	 */
-	private function format_price( $value ) {
-		if ( '' === $value || null === $value ) {
-			return '';
+	private function format_price( $value, $settings = array() ) {
+		$override = '';
+		if ( is_array( $settings ) && isset( $settings['currency_symbol'] ) ) {
+			$override = (string) $settings['currency_symbol'];
 		}
-		if ( class_exists( 'MeprUtils' ) && method_exists( 'MeprUtils', 'format_currency' ) ) {
-			return MeprUtils::format_currency( (float) $value );
-		}
-		return number_format( (float) $value, 2, '.', '' );
+		return KDNA_Early_Bird_Engine::format_price( $value, $override );
 	}
 
-	private function safe_sprintf_int( $template, $number ) {
-		$template = (string) $template;
+	/**
+	 * Pick the singular or plural template based on count, then fill in
+	 * the number. If neither template contains a sprintf placeholder we
+	 * fall back to prepending the count, so a label like "left" still
+	 * works without curly braces.
+	 */
+	private function pluralised( $singular, $plural, $count ) {
+		$count    = (int) $count;
+		$template = ( 1 === $count ) ? (string) $singular : (string) $plural;
 		if ( false === strpos( $template, '%d' ) && false === strpos( $template, '%s' ) ) {
-			return trim( (string) $number . ' ' . $template );
+			return trim( (string) $count . ' ' . $template );
 		}
-		return sprintf( $template, (int) $number );
+		return sprintf( $template, $count );
 	}
 
 	private function days_until( $end_date ) {
