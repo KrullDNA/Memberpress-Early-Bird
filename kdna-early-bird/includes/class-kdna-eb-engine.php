@@ -43,6 +43,16 @@ class KDNA_Early_Bird_Engine {
 		// The seamless price override.
 		add_filter( 'get_post_metadata', array( $this, 'filter_price_meta' ), 10, 4 );
 
+		// Safety net for code paths in MemberPress that compute the price
+		// without re-reading the meta (cached transaction amounts, the
+		// MeprHooks adjusted price pipeline, level/pricing tables). Fail
+		// safe direction is preserved: these handlers only ever lower the
+		// price, never raise it.
+		add_filter( 'mepr-adjusted-price', array( $this, 'filter_mepr_price' ), 10, 3 );
+		add_filter( 'mepr-product-actual-price', array( $this, 'filter_mepr_price' ), 10, 3 );
+		add_filter( 'mepr-product-price', array( $this, 'filter_mepr_price' ), 10, 3 );
+		add_filter( 'mepr-membership-table-price', array( $this, 'filter_mepr_price' ), 10, 3 );
+
 		// Keep the membership index in sync with the rule store.
 		add_action( 'save_post_' . KDNA_EARLY_BIRD_CPT, array( $this, 'rebuild_index_on_rule_change' ), 20, 1 );
 		add_action( 'trashed_post', array( $this, 'rebuild_index_on_rule_change' ), 20, 1 );
@@ -106,6 +116,48 @@ class KDNA_Early_Bird_Engine {
 		}
 
 		return $single ? $price : array( $price );
+	}
+
+	/**
+	 * Safety net for MemberPress price filters. Some checkout paths cache
+	 * the price on a transaction record or compute it through MeprHooks
+	 * without going back through get_post_metadata. Those filters reach
+	 * here so the early bird price still wins.
+	 *
+	 * Arg order varies by MemberPress hook and version, so we look for
+	 * the MeprProduct object in any of the trailing args and pull its
+	 * ID. Fail safe direction is preserved: this only ever lowers the
+	 * price, never raises it.
+	 */
+	public function filter_mepr_price( $price, $second = null, $third = null ) {
+		$product_id = 0;
+		foreach ( array( $second, $third ) as $arg ) {
+			if ( is_object( $arg ) && isset( $arg->ID ) && (int) $arg->ID > 0 ) {
+				$product_id = (int) $arg->ID;
+				break;
+			}
+		}
+		if ( $product_id <= 0 ) {
+			return $price;
+		}
+
+		$state = $this->get_offer_state( $product_id );
+		if ( ! is_array( $state ) || empty( $state['live'] ) ) {
+			return $price;
+		}
+
+		$eb_price = isset( $state['early_bird_price'] ) ? (float) $state['early_bird_price'] : 0;
+		if ( $eb_price <= 0 ) {
+			return $price;
+		}
+
+		$current = (float) $price;
+		// Only ever lower the price. If the current value is already at
+		// or below the early bird price, leave it alone.
+		if ( $eb_price < $current ) {
+			return $eb_price;
+		}
+		return $price;
 	}
 
 	/**

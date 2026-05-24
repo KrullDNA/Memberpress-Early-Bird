@@ -208,15 +208,17 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 		);
 
 		$this->add_control(
-			'hide_when_ended',
+			'ended_behaviour',
 			array(
-				'label'        => __( 'Hide widget when offer has ended', 'kdna-early-bird' ),
-				'type'         => \Elementor\Controls_Manager::SWITCHER,
-				'label_on'     => __( 'Yes', 'kdna-early-bird' ),
-				'label_off'    => __( 'No', 'kdna-early-bird' ),
-				'return_value' => 'yes',
-				'default'      => 'no',
-				'description'  => __( 'When on, the widget renders nothing on the front end once the offer has ended.', 'kdna-early-bird' ),
+				'label'       => __( 'When the offer has ended', 'kdna-early-bird' ),
+				'type'        => \Elementor\Controls_Manager::SELECT,
+				'options'     => array(
+					'hide'       => __( 'Hide the widget', 'kdna-early-bird' ),
+					'full_price' => __( 'Show the full price only', 'kdna-early-bird' ),
+					'message'    => __( 'Show the ended message', 'kdna-early-bird' ),
+				),
+				'default'     => 'hide',
+				'description' => __( 'What the widget does on the front end once the offer is no longer live.', 'kdna-early-bird' ),
 			)
 		);
 
@@ -979,20 +981,30 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 			return;
 		}
 
-		$live           = ! empty( $state['live'] );
-		$hide_when_ended = ( ! empty( $settings['hide_when_ended'] ) && 'yes' === $settings['hide_when_ended'] );
-
-		if ( ! $live && $hide_when_ended ) {
-			if ( $this->is_editor_view() ) {
-				$this->render_editor_notice( __( 'Offer has ended and "hide when ended" is on. The widget renders nothing on the front end.', 'kdna-early-bird' ) );
-			}
-			return;
+		$live      = ! empty( $state['live'] );
+		$behaviour = isset( $settings['ended_behaviour'] ) ? (string) $settings['ended_behaviour'] : 'hide';
+		if ( ! in_array( $behaviour, array( 'hide', 'full_price', 'message' ), true ) ) {
+			$behaviour = 'hide';
 		}
 
 		if ( $live ) {
 			$this->render_active( $settings, $state, $engine );
-		} else {
-			$this->render_ended( $settings );
+			return;
+		}
+
+		switch ( $behaviour ) {
+			case 'full_price':
+				$this->render_full_price_only( $settings, $state, $engine );
+				return;
+			case 'message':
+				$this->render_ended( $settings );
+				return;
+			case 'hide':
+			default:
+				if ( $this->is_editor_view() ) {
+					$this->render_editor_notice( __( 'Offer is not live and the ended behaviour is set to hide. The widget renders nothing on the front end.', 'kdna-early-bird' ) );
+				}
+				return;
 		}
 	}
 
@@ -1048,6 +1060,33 @@ class KDNA_Early_Bird_Widget extends \Elementor\Widget_Base {
 				<?php $this->render_countdown( $settings, $end_date ); ?>
 			<?php endif; ?>
 
+			<?php if ( $show_button ) : ?>
+				<?php $this->render_button( $settings ); ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the widget in "full price only" mode used when an offer has
+	 * ended and the editor has chosen to show the full price rather than
+	 * the ended message or nothing. Shares the current price styling so
+	 * any colour and typography controls carry across naturally.
+	 */
+	private function render_full_price_only( $settings, $state, $engine ) {
+		$full_price = $engine->get_stored_full_price( (int) $state['membership_id'] );
+		if ( '' === $full_price ) {
+			return;
+		}
+
+		$show_button = isset( $settings['show_button'] ) && 'yes' === $settings['show_button'];
+		?>
+		<div class="kdna-early-bird-widget kdna-early-bird-widget--full-only">
+			<div class="kdna-early-bird-prices">
+				<span class="kdna-early-bird-current-price">
+					<?php echo esc_html( $this->format_price( $full_price ) ); ?>
+				</span>
+			</div>
 			<?php if ( $show_button ) : ?>
 				<?php $this->render_button( $settings ); ?>
 			<?php endif; ?>
